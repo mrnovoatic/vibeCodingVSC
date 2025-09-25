@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generador de Formularios IA (con Apps Script)</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.1/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script>
+        // Configuración del worker para pdf.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
+        // Configuración de Tailwind para el modo oscuro
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        /* Estilos adicionales para un mejor scroll y transiciones */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .transition-all-fast {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        //=========== INICIO DEL CÓDIGO DE REACT ===========
+
+        // CONSTANTES Y TEXTOS INICIALES DE LA UI
+        const APP_TITLE = "Generador de Formularios IA (con Apps Script)";
+        const GOOGLE_FORM_QUESTION_TYPES = ["SHORT_ANSWER", "PARAGRAPH", "MULTIPLE_CHOICE", "CHECKBOXES", "DROPDOWN"]; // TRUE_FALSE se maneja como MULTIPLE_CHOICE
+
+        const INITIAL_UI_TEXTS = {
+            es: {
+                // Títulos y Encabezados
+                appTitle: APP_TITLE,
+                settingsTitle: "Configuración",
+                resultsTitle: "Resultados",
+                formSettingsTitle: "Configuración del Formulario",
+                getScriptModalTitle: "Código Google Apps Script",
+                // Etiquetas y Placeholders
+                apiKeyLabel: "Tu API Key de Google Gemini",
+                apiKeyPlaceholder: "Pega tu clave API aquí...",
+                saveApiKey: "Guardar Clave",
+                modeSelectLabel: "Modo de funcionamiento",
+                modeOption1: "La IA generará las preguntas",
+                modeOption2: "El documento ya contiene las preguntas",
+                topicLabel: "Tema",
+                topicPlaceholder: "Ej: La Célula, La Revolución Francesa",
+                levelLabel: "Nivel Educativo",
+                levelPlaceholder: "Ej: 1º ESO, Universidad",
+                contextLabel: "Contexto o Teoría (Opcional)",
+                uploadFile: "Subir archivo",
+                pasteText: "O pega el texto aquí...",
+                additionalInstructionsLabel: "Instrucciones Adicionales (Opcional)",
+                additionalInstructionsPlaceholder: "Ej: enfócate en preguntas de aplicación práctica",
+                fileInputLabel: "Archivo de Preguntas",
+                fileHelpText: "Nota: Para archivos .docx y .pdf, es más fiable copiar y pegar el texto directamente para evitar problemas de formato o seguridad del navegador.",
+                numQuestionsLabel: "Número total de preguntas a generar",
+                quizModeLabel: "Habilitar modo cuestionario",
+                pointsPerQuestionLabel: "Puntos por pregunta",
+                questionTypeDistributionLabel: "Distribución de tipos de pregunta",
+                questionTypeEnabled: "Habilitado",
+                totalSpecified: "Total especificado",
+                aiTip: "Consejo: Genera un número moderado de preguntas (ej. 10-15) a la vez para obtener mejores resultados y evitar errores.",
+                // Botones
+                generateButton: "Generar Preguntas",
+                getScriptButton: "Obtener Script para Google Forms",
+                copyCodeButton: "Copiar Código",
+                copyTextButton: "Copiar Preguntas (Texto)",
+                clearResultsButton: "Limpiar Resultados",
+                addMoreButton: "Añadir más preguntas",
+                deleteButton: "Eliminar",
+                closeButton: "Cerrar",
+                fullscreenEnter: "Pantalla Completa",
+                fullscreenExit: "Salir de Pantalla Completa",
+                // Pestañas (Móvil)
+                configTab: "Configuración",
+                resultsTab: "Resultados",
+                // Resultados
+                noResults: "Aún no se han generado preguntas. Ajusta la configuración y pulsa 'Generar Preguntas'.",
+                question: "Pregunta",
+                type: "Tipo",
+                options: "Opciones",
+                correctAnswer: "Respuesta Correcta",
+                // Idiomas
+                uiLanguageLabel: "Idioma de la Interfaz (UI)",
+                contentLanguageLabel: "Idioma del Material (IA)",
+                contentLanguagePlaceholder: "Ej: español, english, français",
+                translateButton: "Traducir UI",
+                otherLanguage: "Otro...",
+                // Instrucciones del Script
+                scriptInstructionsTitle: "Instrucciones",
+                scriptInstruction1: "Abre Google Drive y crea un nuevo 'Google Apps Script'.",
+                scriptInstruction2: "Borra cualquier código de ejemplo y pega este código en el editor.",
+                scriptInstruction3: "Haz clic en el botón 'Guardar proyecto' (icono de disquete).",
+                scriptInstruction4: "En el menú desplegable junto a 'Depurar', selecciona la función 'crearFormulario' y haz clic en 'Ejecutar'.",
+                scriptInstruction5: "La primera vez, Google te pedirá permisos. Acéptalos para permitir que el script cree el formulario en tu cuenta.",
+                scriptInstruction6: "¡Listo! El formulario aparecerá en tu Google Drive.",
+                // Pie de Página
+                footerLink1: "Laboratorio de aplicaciones educativas",
+                footerLink2: "Aplicación hecha por Juan José de Haro",
+                footerLink3: "Licencia Creative Commons BY-SA",
+                footerDisclaimer: "Esta aplicación utiliza IA para generar y procesar contenido. Revisa siempre los resultados.",
+                // Mensajes y Alertas
+                loadingAI: "La IA está trabajando...",
+                loadingFile: "Procesando archivo...",
+                errorTitle: "Error",
+                successTitle: "Éxito",
+                apiKeySaved: "API Key guardada correctamente en el almacenamiento local.",
+                apiKeyMissing: "Por favor, introduce tu API Key de Gemini para continuar.",
+                jsonError: "La IA devolvió una respuesta inesperada. Inténtalo de nuevo, quizás con una consulta más simple.",
+                totalQuestionsMismatch: "La suma de los tipos de pregunta no coincide con el número total de preguntas a generar.",
+                noQuestionTypesSelected: "Debes habilitar al menos un tipo de pregunta.",
+                codeCopied: "¡Código copiado al portapapeles!",
+                textCopied: "¡Preguntas copiadas al portapapeles!",
+            },
+            // Se añadirán más idiomas dinámicamente
+        };
+        
+        // COMPONENTES AUXILIARES
+        const Icon = ({ path, className = "w-6 h-6" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+                <path fillRule="evenodd" d={path} clipRule="evenodd" />
+            </svg>
+        );
+        
+        const Icons = {
+            sun: "M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.106a.75.75 0 010 1.06l-1.591 1.59a.75.75 0 11-1.06-1.06l1.59-1.59a.75.75 0 011.06 0zm-11.457 0a.75.75 0 011.06 0l1.59 1.59a.75.75 0 01-1.06 1.06l-1.59-1.59a.75.75 0 010-1.06zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM3.75 12a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h2.25a.75.75 0 01.75.75zM17.894 17.894a.75.75 0 010-1.06l1.59-1.59a.75.75 0 111.06 1.06l-1.59 1.59a.75.75 0 01-1.06 0zm-11.457 0a.75.75 0 01-1.06 0l-1.59-1.59a.75.75 0 011.06-1.06l1.59 1.59a.75.75 0 010 1.06zM12 18a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V18.75a.75.75 0 01.75-.75z",
+            moon: "M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z",
+            system: "M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h9.75a2.25 2.25 0 012.25 2.25z",
+            trash: "M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.006a.75.75 0 01-.75.742h-8.5a.75.75 0 01-.75-.742L4.53 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.9h1.368c1.603 0 2.816 1.336 2.816 2.9zM12 18.25a.75.75 0 01-.75-.75V8.5a.75.75 0 011.5 0v9a.75.75 0 01-.75.75zM10.125 18.25a.75.75 0 01-.75-.75V8.5a.75.75 0 011.5 0v9a.75.75 0 01-.75.75zM13.875 18.25a.75.75 0 01-.75-.75V8.5a.75.75 0 011.5 0v9a.75.75 0 01-.75.75z",
+            copy: "M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.625v2.625a2.625 2.625 0 01-2.625 2.625H7.5a2.625 2.625 0 01-2.625-2.625V7.875a2.625 2.625 0 012.625-2.625h2.625m7.5 4.625h-6.375a1.125 1.125 0 01-1.125-1.125v-6.375a1.125 1.125 0 011.125-1.125h6.375a1.125 1.125 0 011.125 1.125v6.375a1.125 1.125 0 01-1.125 1.125z",
+            plus: "M12 4.5v15m7.5-7.5h-15",
+            xMark: "M6 18L18 6M6 6l12 12",
+            fullscreenEnter: "M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15",
+            fullscreenExit: "M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+            sparkles: "M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128z M15.75 12.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z M12.991 2.755a3 3 0 00-2.982.995l-1.023 1.023a2.25 2.25 0 01-3.182 0l-1.023-1.023a3 3 0 00-4.242 4.242l1.023 1.023a2.25 2.25 0 010 3.182l-1.023 1.023a3 3 0 104.242 4.242l1.023-1.023a2.25 2.25 0 013.182 0l1.023 1.023a3 3 0 004.242-4.242l-1.023-1.023a2.25 2.25 0 010-3.182l1.023-1.023a3 3 0 00-2.982-5.23z"
+        };
+        
+        const Spinner = () => (
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        );
+
+        // --- COMPONENTE PRINCIPAL DE LA APP ---
+        function App() {
+            // --- ESTADOS ---
+            
+            // UI y Configuración General
+            const [theme, setTheme] = React.useState(localStorage.getItem('theme') || 'system');
+            const [isFullScreen, setIsFullScreen] = React.useState(false);
+            const [mobileTab, setMobileTab] = React.useState('config'); // 'config' o 'results'
+            const [apiKey, setApiKey] = React.useState(localStorage.getItem('geminiApiKey') || '');
+            const [showApiKeyInput, setShowApiKeyInput] = React.useState(!localStorage.getItem('geminiApiKey'));
+
+            // Internacionalización (i18n)
+            const [uiTexts, setUiTexts] = React.useState(INITIAL_UI_TEXTS.es);
+            const [allUiTexts, setAllUiTexts] = React.useState(() => {
+                const storedTranslations = localStorage.getItem('uiTranslations');
+                return storedTranslations ? JSON.parse(storedTranslations) : INITIAL_UI_TEXTS;
+            });
+            const [currentLang, setCurrentLang] = React.useState(localStorage.getItem('uiLang') || 'es');
+            const [otherLangInput, setOtherLangInput] = React.useState('');
+            
+            // Estado de la app
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [isFileLoading, setIsFileLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+            const [toast, setToast] = React.useState({ show: false, message: '', type: 'success' });
+            
+            // Configuración de la generación
+            const [mode, setMode] = React.useState('generate'); // 'generate' o 'extract'
+            const [topic, setTopic] = React.useState('');
+            const [level, setLevel] = React.useState('');
+            const [contextText, setContextText] = React.useState('');
+            const [documentText, setDocumentText] = React.useState('');
+            const [additionalInstructions, setAdditionalInstructions] = React.useState('');
+            const [contentLanguage, setContentLanguage] = React.useState('español');
+            
+            // Configuración del formulario (Modal)
+            const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
+            const [numQuestions, setNumQuestions] = React.useState(10);
+            const [isQuiz, setIsQuiz] = React.useState(true);
+            const [points, setPoints] = React.useState(1);
+            const [questionTypes, setQuestionTypes] = React.useState(
+                GOOGLE_FORM_QUESTION_TYPES.reduce((acc, type) => {
+                    acc[type] = { enabled: true, count: type === 'MULTIPLE_CHOICE' ? 5 : (type === 'SHORT_ANSWER' ? 5 : 0) };
+                    return acc;
+                }, {})
+            );
+
+            // Resultados
+            const [questions, setQuestions] = React.useState([]);
+            const [isScriptModalOpen, setIsScriptModalOpen] = React.useState(false);
+            const [generatedScript, setGeneratedScript] = React.useState('');
+
+            // --- EFECTOS (useEffect) ---
+
+            // Efecto para el tema (Claro/Oscuro/Sistema)
+            React.useEffect(() => {
+                const root = window.document.documentElement;
+                const isDark =
+                    theme === 'dark' ||
+                    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                root.classList.toggle('dark', isDark);
+                localStorage.setItem('theme', theme);
+            }, [theme]);
+
+            // Efecto para la internacionalización
+            React.useEffect(() => {
+                const langToUse = allUiTexts[currentLang] ? currentLang : 'es';
+                setUiTexts(allUiTexts[langToUse]);
+                localStorage.setItem('uiLang', langToUse);
+            }, [currentLang, allUiTexts]);
+
+
+            // Efecto para el modo de pantalla completa
+            React.useEffect(() => {
+                const handleFullScreenChange = () => setIsFullScreen(!!document.fullscreenElement);
+                document.addEventListener('fullscreenchange', handleFullScreenChange);
+                return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
+            }, []);
+            
+             // Efecto para el Toast
+            React.useEffect(() => {
+                if (toast.show) {
+                    const timer = setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [toast]);
+            
+
+            // --- MANEJADORES DE EVENTOS Y LÓGICA ---
+
+            const handleThemeChange = (newTheme) => setTheme(newTheme);
+            const toggleFullScreen = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => console.error(err));
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+
+            const handleSaveApiKey = () => {
+                if(apiKey.trim()){
+                    localStorage.setItem('geminiApiKey', apiKey.trim());
+                    setShowApiKeyInput(false);
+                    showToast(uiTexts.apiKeySaved, 'success');
+                }
+            };
+            
+            const showToast = (message, type = 'success') => {
+                setToast({ show: true, message, type });
+            };
+
+            const handleFileChange = async (e, target) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                setIsFileLoading(true);
+                setError(null);
+                
+                let textContent = '';
+                try {
+                    if (file.type === "text/plain" || file.name.endsWith('.md')) {
+                        textContent = await file.text();
+                    } else if (file.name.endsWith('.docx')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const result = await window.mammoth.extractRawText({ arrayBuffer });
+                        textContent = result.value;
+                    } else if (file.name.endsWith('.pdf')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                        let fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+                        }
+                        textContent = fullText;
+                    } else {
+                        throw new Error("Formato de archivo no soportado.");
+                    }
+
+                    if (target === 'context') setContextText(textContent);
+                    else setDocumentText(textContent);
+
+                } catch (err) {
+                    console.error("Error procesando archivo:", err);
+                    setError("Error al procesar el archivo: " + err.message);
+                } finally {
+                    setIsFileLoading(false);
+                    // Resetear el input para permitir subir el mismo archivo de nuevo
+                    e.target.value = null;
+                }
+            };
+
+            const validateSettings = () => {
+                if (mode === 'generate') {
+                    const totalSpecified = Object.values(questionTypes)
+                        .filter(qt => qt.enabled)
+                        .reduce((sum, qt) => sum + (Number(qt.count) || 0), 0);
+                    
+                    if (totalSpecified !== Number(numQuestions)) {
+                        setError(uiTexts.totalQuestionsMismatch);
+                        return false;
+                    }
+                    if (Object.values(questionTypes).every(qt => !qt.enabled)) {
+                        setError(uiTexts.noQuestionTypesSelected);
+                        return false;
+                    }
+                }
+                setError(null);
+                return true;
+            };
+
+            const handleGenerate = async (addMore = false) => {
+                if (!apiKey) {
+                    setError(uiTexts.apiKeyMissing);
+                    setShowApiKeyInput(true);
+                    return;
+                }
+                if (!validateSettings()) {
+                     setIsSettingsModalOpen(true);
+                     return;
+                }
+                
+                setIsLoading(true);
+                setError(null);
+                if (!addMore) {
+                    setQuestions([]);
+                }
+
+                try {
+                    const prompt = buildPrompt();
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { response_mime_type: "application/json" }
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.candidates || !data.candidates[0].content.parts[0].text) {
+                        throw new Error("Respuesta inválida de la API.");
+                    }
+                    
+                    const jsonString = data.candidates[0].content.parts[0].text;
+                    const newQuestions = JSON.parse(jsonString);
+
+                    setQuestions(prev => [...prev, ...newQuestions]);
+                    if (window.innerWidth < 1024) {
+                       setMobileTab('results');
+                    }
+
+                } catch (err) {
+                    console.error("Error en la generación:", err);
+                    setError(`${uiTexts.jsonError} (${err.message})`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            const handleTranslateUI = async () => {
+                if (!apiKey) {
+                    setError(uiTexts.apiKeyMissing);
+                    setShowApiKeyInput(true);
+                    return;
+                }
+                if (!otherLangInput.trim()) return;
+
+                setIsLoading(true);
+                setError(null);
+                
+                const targetLanguage = otherLangInput.trim();
+                const prompt = `Translate the following JSON object values from Spanish to ${targetLanguage}. Maintain the JSON structure and keys exactly. Only translate the string values.\n\nJSON:\n${JSON.stringify(INITIAL_UI_TEXTS.es, null, 2)}`;
+
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+                     const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { response_mime_type: "application/json" }
+                        }),
+                    });
+                     if (!response.ok) throw new Error("API translation request failed.");
+
+                    const data = await response.json();
+                    const translatedJsonString = data.candidates[0].content.parts[0].text;
+                    const translatedTexts = JSON.parse(translatedJsonString);
+
+                    const langCode = targetLanguage.substring(0, 2).toLowerCase();
+                    const newAllUiTexts = { ...allUiTexts, [langCode]: translatedTexts };
+                    
+                    setAllUiTexts(newAllUiTexts);
+                    setCurrentLang(langCode);
+                    localStorage.setItem('uiTranslations', JSON.stringify(newAllUiTexts));
+
+                } catch (err) {
+                    console.error("Error translating UI:", err);
+                    setError("Failed to translate UI. Please try again.");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+
+            const buildPrompt = () => {
+                if (mode === 'extract') {
+                    return `Analiza el siguiente texto y extrae todas las preguntas que contenga. Devuelve el resultado como un array JSON. Cada objeto en el array debe tener las siguientes claves: "pregunta" (string), "tipo_google_forms" (string, elige el más adecuado de esta lista: ${GOOGLE_FORM_QUESTION_TYPES.join(', ')}), "opciones" (array de strings, solo si aplica), y "respuesta_correcta" (string, la respuesta correcta). Si el texto está en un idioma específico, mantén ese idioma en tu respuesta. Texto a analizar:\n\n---\n${documentText}\n---`;
+                }
+
+                // Modo 'generate'
+                const enabledTypes = Object.entries(questionTypes)
+                    .filter(([_, qt]) => qt.enabled && qt.count > 0)
+                    .map(([type, qt]) => `${qt.count} de tipo ${type}`)
+                    .join(', ');
+
+                let prompt = `Eres un asistente experto en educación. Genera una lista de ${numQuestions} preguntas para un Google Form sobre el tema "${topic}" para el nivel educativo "${level}". El idioma del contenido debe ser: ${contentLanguage}.\n`;
+                prompt += `La distribución de preguntas debe ser la siguiente: ${enabledTypes}.\n`;
+
+                if (contextText) {
+                    prompt += `Basa las preguntas en el siguiente texto de contexto/teoría:\n---\n${contextText}\n---\n`;
+                }
+                if (additionalInstructions) {
+                    prompt += `Sigue estas instrucciones adicionales: "${additionalInstructions}".\n`;
+                }
+
+                prompt += `Devuelve el resultado como un único array JSON válido. Cada objeto del array debe tener las siguientes claves: "pregunta" (string), "tipo_google_forms" (string), "opciones" (array de strings, obligatorio para tipos MULTIPLE_CHOICE, CHECKBOXES, DROPDOWN), y "respuesta_correcta" (string o array de strings para CHECKBOXES). Asegúrate de que la respuesta correcta esté incluida en las opciones. Para preguntas de verdadero/falso, usa el tipo MULTIPLE_CHOICE con las opciones ["Verdadero", "Falso"].`;
+                return prompt;
+            };
+            
+            const generateGoogleAppsScript = () => {
+                let script = `// Script generado por "${APP_TITLE}"\n`;
+                script += `// ${new Date().toLocaleString()}\n\n`;
+                script += `function crearFormulario() {\n`;
+                script += `  try {\n`;
+                script += `    var form = FormApp.create("${topic || 'Formulario sin título'}");\n`;
+                script += `    form.setDescription("Formulario sobre ${topic} para ${level}");\n`;
+                
+                if (isQuiz) {
+                    script += `    form.setIsQuiz(true);\n`;
+                }
+
+                script += `\n    // --- PREGUNTAS ---\n`;
+                
+                questions.forEach((q, index) => {
+                    const pregunta = q.pregunta ? q.pregunta.replace(/'/g, "\\'") : `Pregunta ${index+1}`;
+                    const tipo = q.tipo_google_forms || 'SHORT_ANSWER';
+                    
+                    script += `\n    // Pregunta ${index + 1}: ${tipo}\n`;
+                    script += `    var item${index} = form.add`;
+
+                    switch(tipo) {
+                        case 'MULTIPLE_CHOICE':
+                            script += `MultipleChoiceItem();\n`;
+                            const mcChoices = (q.opciones || []).map(opt => `      item${index}.createChoice('${opt.replace(/'/g, "\\'")}', ${isQuiz && opt === q.respuesta_correcta})`).join(',\n');
+                            script += `    item${index}.setChoices([\n${mcChoices}\n    ]);\n`;
+                            break;
+                        case 'CHECKBOXES':
+                            script += `CheckboxItem();\n`;
+                            const cbChoices = (q.opciones || []).map(opt => {
+                                const isCorrect = Array.isArray(q.respuesta_correcta) ? q.respuesta_correcta.includes(opt) : opt === q.respuesta_correcta;
+                                return `      item${index}.createChoice('${opt.replace(/'/g, "\\'")}', ${isQuiz && isCorrect})`;
+                            }).join(',\n');
+                            script += `    item${index}.setChoices([\n${cbChoices}\n    ]);\n`;
+                            break;
+                        case 'DROPDOWN':
+                            script += `ListItem(); // DROPDOWN se implementa como ListItem\n`;
+                            const ddChoices = (q.opciones || []).map(opt => `'${opt.replace(/'/g, "\\'")}'`).join(', ');
+                            script += `    item${index}.setChoiceValues([${ddChoices}]);\n`;
+                            // La respuesta correcta en Dropdown se valida de otra forma
+                            break;
+                        case 'PARAGRAPH':
+                            script += `ParagraphTextItem();\n`;
+                            break;
+                        case 'SHORT_ANSWER':
+                        default:
+                            script += `TextItem();\n`;
+                            break;
+                    }
+
+                    script += `    item${index}.setTitle('${pregunta}');\n`;
+                    if (isQuiz) {
+                        script += `    item${index}.setPoints(${points});\n`;
+                    }
+                    script += `    item${index}.setRequired(true);\n`;
+                });
+
+                script += `\n    Logger.log('Formulario creado con éxito. ID: ' + form.getId());\n`;
+                script += `    Logger.log('Puedes editarlo aquí: ' + form.getEditUrl());\n`;
+                script += `  } catch (e) {\n`;
+                script += `    Logger.log('Error al crear el formulario: ' + e.toString());\n`;
+                script += `  }\n`;
+                script += `}\n`;
+                
+                setGeneratedScript(script);
+                setIsScriptModalOpen(true);
+            };
+            
+            const copyToClipboard = (text, type) => {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(type === 'code' ? uiTexts.codeCopied : uiTexts.textCopied, 'success');
+                }).catch(err => {
+                    console.error('Error al copiar:', err);
+                    showToast('Error al copiar texto.', 'error');
+                });
+            };
+            
+            const formatQuestionsAsText = () => {
+                return questions.map((q, i) => {
+                    let text = `${i + 1}. ${q.pregunta} (${q.tipo_google_forms})\n`;
+                    if (q.opciones && q.opciones.length > 0) {
+                        text += q.opciones.map(opt => `   - ${opt}`).join('\n') + '\n';
+                    }
+                    text += `${uiTexts.correctAnswer}: ${Array.isArray(q.respuesta_correcta) ? q.respuesta_correcta.join(', ') : q.respuesta_correcta}\n`;
+                    return text;
+                }).join('\n---\n');
+            };
+
+            const deleteQuestion = (index) => {
+                setQuestions(prev => prev.filter((_, i) => i !== index));
+            };
+            
+            // --- RENDERIZACIÓN DE COMPONENTES ---
+
+            const Header = () => (
+                <header className="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-20">
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                        <Icon path={Icons.sparkles} className="w-8 h-8 mr-2 text-indigo-500" />
+                        {uiTexts.appTitle}
+                    </h1>
+                    <div className="flex items-center space-x-2 md:space-x-4">
+                        <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+                            {['light', 'dark', 'system'].map(t => (
+                                <button key={t} onClick={() => handleThemeChange(t)} className={`p-1.5 rounded-md transition-colors ${theme === t ? 'bg-white dark:bg-gray-900 text-indigo-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+                                    <Icon path={Icons[t]} className="w-5 h-5" />
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={toggleFullScreen} className="p-2 text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
+                            <Icon path={isFullScreen ? Icons.fullscreenExit : Icons.fullscreenEnter} className="w-6 h-6" />
+                        </button>
+                    </div>
+                </header>
+            );
+
+            const SettingsPanel = () => {
+                const totalSpecified = React.useMemo(() => Object.values(questionTypes)
+                    .filter(qt => qt.enabled)
+                    .reduce((sum, qt) => sum + (Number(qt.count) || 0), 0), [questionTypes]);
+
+                return (
+                    <div className="p-6 space-y-6 bg-white dark:bg-gray-800 lg:rounded-lg lg:shadow-md h-full overflow-y-auto">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 pb-2">{uiTexts.settingsTitle}</h2>
+                        
+                        {/* API Key Input */}
+                        {showApiKeyInput && (
+                            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+                                <label htmlFor="apiKey" className="block text-sm font-medium text-indigo-800 dark:text-indigo-200">{uiTexts.apiKeyLabel}</label>
+                                <div className="mt-1 flex rounded-md shadow-sm">
+                                    <input type="password" id="apiKey" value={apiKey} onChange={e => setApiKey(e.target.value)} className="flex-1 block w-full rounded-none rounded-l-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder={uiTexts.apiKeyPlaceholder} />
+                                    <button onClick={handleSaveApiKey} className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-300 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">{uiTexts.saveApiKey}</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Language Settings */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div>
+                                <label htmlFor="ui-lang" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.uiLanguageLabel}</label>
+                                <select id="ui-lang" value={currentLang} onChange={e => setCurrentLang(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                    <option value="es">Español</option>
+                                    <option value="ca">Català</option>
+                                    <option value="gl">Galego</option>
+                                    <option value="eu">Euskara</option>
+                                    <option value="oc">Aranés</option>
+                                    {Object.keys(allUiTexts).filter(k => !['es', 'ca', 'gl', 'eu', 'oc'].includes(k)).map(k => <option key={k} value={k}>{k}</option>)}
+                                    <option value="other">{uiTexts.otherLanguage}</option>
+                                </select>
+                                {currentLang === 'other' && (
+                                    <div className="mt-2 flex">
+                                        <input type="text" value={otherLangInput} onChange={e => setOtherLangInput(e.target.value)} placeholder="Ej: english" className="flex-1 block w-full rounded-none rounded-l-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                        <button onClick={handleTranslateUI} className="px-4 py-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 disabled:bg-indigo-300" disabled={isLoading}>{isLoading ? <Spinner/> : uiTexts.translateButton}</button>
+                                    </div>
+                                )}
+                           </div>
+                           <div>
+                                <label htmlFor="content-lang" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.contentLanguageLabel}</label>
+                                <input type="text" id="content-lang" value={contentLanguage} onChange={e => setContentLanguage(e.target.value)} placeholder={uiTexts.contentLanguagePlaceholder} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md" />
+                           </div>
+                        </div>
+
+                        {/* Mode Selection */}
+                        <div>
+                            <label htmlFor="mode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.modeSelectLabel}</label>
+                            <select id="mode" value={mode} onChange={e => setMode(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="generate">{uiTexts.modeOption1}</option>
+                                <option value="extract">{uiTexts.modeOption2}</option>
+                            </select>
+                        </div>
+
+                        {/* AI Generation Mode */}
+                        {mode === 'generate' && (
+                            <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                <div>
+                                    <label htmlFor="topic" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.topicLabel}</label>
+                                    <input type="text" id="topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder={uiTexts.topicPlaceholder} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md" />
+                                </div>
+                                <div>
+                                    <label htmlFor="level" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.levelLabel}</label>
+                                    <input type="text" id="level" value={level} onChange={e => setLevel(e.target.value)} placeholder={uiTexts.levelPlaceholder} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.contextLabel}</label>
+                                    <div className="mt-1">
+                                        <label className="w-full flex justify-center px-4 py-2 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-gray-700">
+                                            <span>{isFileLoading ? uiTexts.loadingFile : uiTexts.uploadFile}</span>
+                                            <input type="file" className="hidden" onChange={e => handleFileChange(e, 'context')} accept=".txt,.md,.docx,.pdf" />
+                                        </label>
+                                        <textarea value={contextText} onChange={e => setContextText(e.target.value)} rows="5" placeholder={uiTexts.pasteText} className="mt-2 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md"></textarea>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.additionalInstructionsLabel}</label>
+                                    <textarea id="instructions" value={additionalInstructions} onChange={e => setAdditionalInstructions(e.target.value)} rows="3" placeholder={uiTexts.additionalInstructionsPlaceholder} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md"></textarea>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Document Extraction Mode */}
+                        {mode === 'extract' && (
+                            <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{uiTexts.fileInputLabel}</label>
+                                    <div className="mt-1">
+                                         <label className="w-full flex justify-center px-4 py-2 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-gray-700">
+                                            <span>{isFileLoading ? uiTexts.loadingFile : uiTexts.uploadFile}</span>
+                                            <input type="file" className="hidden" onChange={e => handleFileChange(e, 'document')} accept=".txt,.md,.docx,.pdf" />
+                                        </label>
+                                        <textarea value={documentText} onChange={e => setDocumentText(e.target.value)} rows="8" placeholder={uiTexts.pasteText} className="mt-2 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md"></textarea>
+                                    </div>
+                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{uiTexts.fileHelpText}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col space-y-4">
+                           <button onClick={() => setIsSettingsModalOpen(true)} className="w-full text-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                {uiTexts.formSettingsTitle}
+                            </button>
+                            <button
+                                onClick={() => handleGenerate()}
+                                disabled={isLoading}
+                                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all-fast"
+                            >
+                                {isLoading && !questions.length ? <Spinner /> : <Icon path={Icons.sparkles} className="w-6 h-6 mr-2"/>}
+                                {uiTexts.generateButton}
+                            </button>
+                        </div>
+                        {error && <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/40 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 rounded-md text-sm">{error}</div>}
+                        
+                         {/* Settings Modal */}
+                        {isSettingsModalOpen && (
+                             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                                        <h3 className="text-xl font-semibold">{uiTexts.formSettingsTitle}</h3>
+                                    </div>
+                                    <div className="p-6 space-y-6 overflow-y-auto">
+                                        {mode === 'generate' && (
+                                            <div>
+                                                <label htmlFor="num-questions" className="block text-sm font-medium">{uiTexts.numQuestionsLabel}</label>
+                                                <input type="number" id="num-questions" value={numQuestions} onChange={e => setNumQuestions(e.target.value)} min="1" max="50" className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm" />
+                                            </div>
+                                        )}
+                                        <div className="flex items-start">
+                                            <div className="flex items-center h-5">
+                                                <input id="quiz-mode" type="checkbox" checked={isQuiz} onChange={e => setIsQuiz(e.target.checked)} className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                            </div>
+                                            <div className="ml-3 text-sm">
+                                                <label htmlFor="quiz-mode" className="font-medium">{uiTexts.quizModeLabel}</label>
+                                            </div>
+                                        </div>
+                                        {isQuiz && (
+                                            <div className="pl-8">
+                                                <label htmlFor="points" className="block text-sm font-medium">{uiTexts.pointsPerQuestionLabel}</label>
+                                                <input type="number" id="points" value={points} onChange={e => setPoints(e.target.value)} min="0" className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm" />
+                                            </div>
+                                        )}
+                                        {mode === 'generate' && (
+                                            <div className="space-y-4">
+                                                <h4 className="font-medium">{uiTexts.questionTypeDistributionLabel}</h4>
+                                                <div className="space-y-2">
+                                                    {Object.entries(questionTypes).map(([type, config]) => (
+                                                        <div key={type} className="grid grid-cols-12 items-center gap-2">
+                                                            <div className="col-span-2 flex items-center">
+                                                                <input type="checkbox" id={`type-${type}`} checked={config.enabled} onChange={e => setQuestionTypes(prev => ({...prev, [type]: {...prev[type], enabled: e.target.checked}}))} className="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                                            </div>
+                                                            <label htmlFor={`type-${type}`} className="col-span-6 text-sm">{type}</label>
+                                                            <input type="number" value={config.count} onChange={e => setQuestionTypes(prev => ({...prev, [type]: {...prev[type], count: parseInt(e.target.value) || 0}}))} disabled={!config.enabled} className="col-span-4 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm disabled:bg-gray-100 dark:disabled:bg-gray-800" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className={`text-sm font-semibold p-2 rounded-md text-right ${totalSpecified !== Number(numQuestions) ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200' : 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'}`}>
+                                                    {uiTexts.totalSpecified}: {totalSpecified} / {numQuestions}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+                                            <p>💡 {uiTexts.aiTip}</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                                        <button onClick={() => setIsSettingsModalOpen(false)} className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">{uiTexts.closeButton}</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const ResultsPanel = () => (
+                <div className="p-6 bg-white dark:bg-gray-800 lg:rounded-lg lg:shadow-md h-full overflow-y-auto">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 pb-2 mb-4">{uiTexts.resultsTitle}</h2>
+                    {questions.length === 0 && !isLoading ? (
+                        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                            <p>{uiTexts.noResults}</p>
+                        </div>
+                    ) : isLoading && questions.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500 dark:text-gray-400 flex justify-center items-center">
+                            <Spinner />
+                            <span className="ml-2">{uiTexts.loadingAI}</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {questions.map((q, index) => (
+                                <div key={index} className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 relative">
+                                    <button onClick={() => deleteQuestion(index)} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 transition-colors">
+                                        <Icon path={Icons.trash} className="w-5 h-5"/>
+                                    </button>
+                                    <p className="font-semibold text-gray-800 dark:text-gray-200 mb-2">{index + 1}. {q.pregunta}</p>
+                                    <div className="text-sm space-y-2">
+                                        <p><strong className="text-gray-600 dark:text-gray-400">{uiTexts.type}:</strong> <span className="font-mono bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md text-xs">{q.tipo_google_forms}</span></p>
+                                        {q.opciones && q.opciones.length > 0 && (
+                                            <div>
+                                                <strong className="text-gray-600 dark:text-gray-400">{uiTexts.options}:</strong>
+                                                <ul className="list-disc list-inside ml-4 mt-1">
+                                                    {q.opciones.map((opt, i) => <li key={i}>{opt}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        <p className="pt-2"><strong className="text-green-700 dark:text-green-400">{uiTexts.correctAnswer}:</strong> <span className="font-medium text-green-800 dark:text-green-300">{Array.isArray(q.respuesta_correcta) ? q.respuesta_correcta.join(', ') : q.respuesta_correcta}</span></p>
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            {mode === 'generate' && (
+                                <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-lg text-center">
+                                    <button onClick={() => handleGenerate(true)} disabled={isLoading} className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center justify-center mx-auto disabled:text-gray-400">
+                                         {isLoading ? <Spinner/> : <Icon path={Icons.plus} className="w-5 h-5 mr-1" />}
+                                         {uiTexts.addMoreButton}
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="pt-4 space-y-2 border-t border-gray-200 dark:border-gray-700">
+                                <button onClick={generateGoogleAppsScript} className="w-full text-center py-3 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold shadow-lg transition-all-fast">{uiTexts.getScriptButton}</button>
+                                <div className="grid grid-cols-2 gap-2">
+                                     <button onClick={() => copyToClipboard(formatQuestionsAsText(), 'text')} className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">{uiTexts.copyTextButton}</button>
+                                     <button onClick={() => setQuestions([])} className="w-full py-2 px-4 border border-red-300 dark:border-red-700 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50">{uiTexts.clearResultsButton}</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                     {isScriptModalOpen && (
+                         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+                                <h3 className="text-xl font-semibold p-6 border-b border-gray-200 dark:border-gray-700">{uiTexts.getScriptModalTitle}</h3>
+                                <div className="p-6 grid lg:grid-cols-2 gap-6 overflow-y-auto">
+                                    <div className="prose prose-sm dark:prose-invert">
+                                        <h4>{uiTexts.scriptInstructionsTitle}</h4>
+                                        <ol className="list-decimal list-inside space-y-2">
+                                            <li>{uiTexts.scriptInstruction1}</li>
+                                            <li>{uiTexts.scriptInstruction2}</li>
+                                            <li>{uiTexts.scriptInstruction3}</li>
+                                            <li>{uiTexts.scriptInstruction4}</li>
+                                            <li>{uiTexts.scriptInstruction5}</li>
+                                            <li>{uiTexts.scriptInstruction6}</li>
+                                        </ol>
+                                    </div>
+                                    <div className="relative">
+                                        <button onClick={() => copyToClipboard(generatedScript, 'code')} className="absolute top-2 right-2 p-2 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
+                                            <Icon path={Icons.copy} className="w-5 h-5"/>
+                                        </button>
+                                        <textarea readOnly value={generatedScript} className="w-full h-96 font-mono text-xs bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md p-2 resize-none"></textarea>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                                    <button onClick={() => setIsScriptModalOpen(false)} className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">{uiTexts.closeButton}</button>
+                                </div>
+                            </div>
+                        </div>
+                     )}
+                </div>
+            );
+            
+            const Footer = () => (
+                <footer className="bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs text-center p-4 border-t border-gray-200 dark:border-gray-700 fixed bottom-0 left-0 right-0 z-20">
+                    <div className="flex justify-center items-center space-x-4 mb-2">
+                        <a href="https://laboratorio.jjdharo.com/" target="_blank" className="hover:text-indigo-500">{uiTexts.footerLink1}</a>
+                        <span>&bull;</span>
+                        <a href="https://jjdharo.com/" target="_blank" className="hover:text-indigo-500">{uiTexts.footerLink2}</a>
+                        <span>&bull;</span>
+                        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" className="hover:text-indigo-500">{uiTexts.footerLink3}</a>
+                    </div>
+                    <p>{uiTexts.footerDisclaimer}</p>
+                </footer>
+            );
+            
+            const MobileTabs = () => (
+                 <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-lg z-10">
+                    <div className="flex">
+                        <button onClick={() => setMobileTab('config')} className={`flex-1 p-4 font-semibold text-center ${mobileTab === 'config' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300' : ''}`}>{uiTexts.configTab}</button>
+                        <button onClick={() => setMobileTab('results')} className={`flex-1 p-4 font-semibold text-center ${mobileTab === 'results' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300' : ''}`}>{uiTexts.resultsTab}</button>
+                    </div>
+                </div>
+            );
+            
+            // --- ESTRUCTURA PRINCIPAL DE LA APP ---
+            return (
+                <div className="min-h-screen">
+                    <Header />
+                    
+                     {/* Toast Notification */}
+                    {toast.show && (
+                        <div className={`fixed top-20 right-5 z-50 px-4 py-2 rounded-md shadow-lg text-white ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                            {toast.message}
+                        </div>
+                    )}
+
+                    <main className="pt-24 pb-28 lg:pb-20">
+                        {/* Layout para pantallas grandes (Desktop) */}
+                        <div className="hidden lg:grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 max-w-screen-2xl mx-auto h-[calc(100vh-140px)]">
+                           <SettingsPanel />
+                           <ResultsPanel />
+                        </div>
+
+                        {/* Layout para pantallas pequeñas (Móvil/Tablet con pestañas) */}
+                        <div className="lg:hidden p-4 h-[calc(100vh-150px)]">
+                            {mobileTab === 'config' ? <SettingsPanel /> : <ResultsPanel />}
+                        </div>
+                    </main>
+                    <MobileTabs />
+                    <Footer />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        //=========== FIN DEL CÓDIGO DE REACT ===========
+    </script>
+</body>
+</html>

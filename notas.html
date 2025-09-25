@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Consulta de Notas - Instituto</title>
+  <meta name="description" content="Aplicación responsiva para que estudiantes consulten sus notas por asignatura." />
+  <style>
+    :root{
+      --bg:#0f172a;
+      --card:#111827;
+      --muted:#94a3b8;
+      --text:#e5e7eb;
+      --brand:#4f46e5;
+      --ok:#16a34a;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --chip:#1f2937;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:linear-gradient(180deg,#0b1020,#0f172a);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+    a{color:inherit}
+    .wrap{max-width:1100px;margin-inline:auto;padding:20px}
+    header{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;
+      padding:14px 18px;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);border-radius:20px;backdrop-filter:blur(8px)
+    }
+    header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}
+    .badge{font-size:12px;color:var(--muted);background:rgba(255,255,255,.06);padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08)}
+    .grid{
+      display:grid;gap:16px;margin-top:16px;
+      grid-template-columns:1.1fr 2fr
+    }
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:radial-gradient(1200px 600px at -20% -50%,rgba(79,70,229,.25),transparent),
+                 linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);
+      padding:16px
+    }
+    .card h2{margin:0 0 10px 0;font-size:16px}
+    form .row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+    @media (max-width:700px){form .row{grid-template-columns:1fr}}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type="text"],select{
+      width:100%;padding:12px 12px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);background:#0b1224;color:var(--text);
+      outline:none
+    }
+    input::placeholder{color:#7c869a}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    button{
+      padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);
+      background:linear-gradient(180deg,#5b54f0,#4338ca);color:white;font-weight:600;cursor:pointer
+    }
+    button.ghost{background:transparent}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{background:var(--chip);border:1px solid rgba(255,255,255,.08);padding:8px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+    .results{display:grid;gap:14px}
+    .summary{
+      display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))
+    }
+    @media (max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}
+    .kpi{
+      background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 14px
+    }
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .value{font-size:22px;font-weight:700;margin-top:4px}
+    table{width:100%;border-collapse:collapse;border-radius:14px;overflow:hidden}
+    thead{background:rgba(255,255,255,.06)}
+    th,td{padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+    tr:hover td{background:rgba(79,70,229,.06)}
+    .pill{padding:4px 8px;border-radius:999px;font-size:12px;display:inline-block}
+    .ok{background:rgba(22,163,74,.18);color:#bbf7d0;border:1px solid rgba(22,163,74,.35)}
+    .warn{background:rgba(245,158,11,.16);color:#fde68a;border:1px solid rgba(245,158,11,.35)}
+    .bad{background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.35)}
+    .muted{color:var(--muted)}
+    .empty{padding:18px;border:1px dashed rgba(255,255,255,.18);border-radius:12px;color:var(--muted);text-align:center}
+    footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header aria-label="Barra superior">
+      <h1>Portal de Notas — Instituto</h1>
+      <span class="badge">Beta • Responsivo</span>
+    </header>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="filtros-title">
+        <h2 id="filtros-title">Búsqueda y filtros</h2>
+        <form id="searchForm">
+          <div class="row">
+            <div>
+              <label for="studentQuery">Estudiante (nombre o ID)</label>
+              <input id="studentQuery" name="studentQuery" type="text" placeholder="Ej. Ana, 2025-013" autocomplete="off" />
+            </div>
+            <div>
+              <label for="subject">Asignatura</label>
+              <select id="subject" name="subject">
+                <option value="">Todas</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div>
+              <label for="group">Curso / Grupo</label>
+              <select id="group" name="group">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="term">Trimestre</label>
+              <select id="term" name="term">
+                <option value="">Todos</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit" aria-label="Buscar">Buscar</button>
+            <button type="button" class="ghost" id="resetBtn">Limpiar</button>
+          </div>
+        </form>
+
+        <div style="margin-top:12px">
+          <div class="chips" id="activeChips" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="resultados-title">
+        <h2 id="resultados-title">Resultados</h2>
+
+        <div class="summary" id="summary">
+          <div class="kpi">
+            <div class="label">Estudiantes</div>
+            <div class="value" id="kpiCount">0</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Media</div>
+            <div class="value" id="kpiAvg">—</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Aprobados</div>
+            <div class="value" id="kpiPass">0</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Suspensos</div>
+            <div class="value" id="kpiFail">0</div>
+          </div>
+        </div>
+
+        <div class="results" style="margin-top:10px">
+          <div id="tableWrap" class="card" style="padding:0">
+            <table aria-describedby="tabla-descr">
+              <caption id="tabla-descr" class="visually-hidden" style="display:none">Tabla de notas por asignatura</caption>
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  <th>ID</th>
+                  <th>Curso</th>
+                  <th>Trimestre</th>
+                  <th>Asignatura</th>
+                  <th>Nota</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+          <div id="empty" class="empty">Use los filtros para consultar notas.</div>
+        </div>
+
+      </section>
+    </div>
+
+    <footer>
+      © Instituto — Portal de Notas. Interfaz adaptable y accesible. 
+    </footer>
+  </div>
+
+  <script>
+    // Dataset simulado; reemplace por fetch('/api/notas?...') para integración real
+    const DATA = [
+      { id: "2025-001", nombre: "Ana Pérez", grupo: "1ºA", trimestre: "T1", asignatura: "Matemáticas", nota: 8.4 },
+      { id: "2025-001", nombre: "Ana Pérez", grupo: "1ºA", trimestre: "T1", asignatura: "Lengua", nota: 7.1 },
+      { id: "2025-001", nombre: "Ana Pérez", grupo: "1ºA", trimestre: "T2", asignatura: "Matemáticas", nota: 8.8 },
+      { id: "2025-002", nombre: "Luis García", grupo: "1ºA", trimestre: "T1", asignatura: "Matemáticas", nota: 5.1 },
+      { id: "2025-002", nombre: "Luis García", grupo: "1ºA", trimestre: "T1", asignatura: "Lengua", nota: 4.6 },
+      { id: "2025-003", nombre: "Marta López", grupo: "1ºB", trimestre: "T1", asignatura: "Matemáticas", nota: 9.3 },
+      { id: "2025-003", nombre: "Marta López", grupo: "1ºB", trimestre: "T2", asignatura: "Lengua", nota: 6.2 },
+      { id: "2025-004", nombre: "Diego Ruiz", grupo: "1ºB", trimestre: "T2", asignatura: "Matemáticas", nota: 3.9 },
+      { id: "2025-004", nombre: "Diego Ruiz", grupo: "1ºB", trimestre: "T2", asignatura: "Lengua", nota: 5.5 }
+    ];
+
+    const $ = (s) => document.querySelector(s);
+    const resultsBody = $("#resultsBody");
+    const kpiCount = $("#kpiCount");
+    const kpiAvg = $("#kpiAvg");
+    const kpiPass = $("#kpiPass");
+    const kpiFail = $("#kpiFail");
+    const subjectSel = $("#subject");
+    const groupSel = $("#group");
+    const termSel = $("#term");
+    const studentQuery = $("#studentQuery");
+    const empty = $("#empty");
+    const activeChips = $("#activeChips");
+    const tableWrap = $("#tableWrap");
+
+    // Poblar selects desde DATA
+    function unique(list, key){
+      return [...new Set(list.map(x => x[key]))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}))
+    }
+    function populateFilters(){
+      unique(DATA,'asignatura').forEach(s=>{
+        const o=document.createElement('option');o.value=s;o.textContent=s;subjectSel.appendChild(o);
+      });
+      unique(DATA,'grupo').forEach(s=>{
+        const o=document.createElement('option');o.value=s;o.textContent=s;groupSel.appendChild(o);
+      });
+      unique(DATA,'trimestre').forEach(s=>{
+        const o=document.createElement('option');o.value=s;o.textContent=s;termSel.appendChild(o);
+      });
+    }
+
+    function statusPill(n){
+      if(n>=5 && n<7) return '<span class="pill warn">Aprobado</span>';
+      if(n>=7) return '<span class="pill ok">Notable/Sobresaliente</span>';
+      return '<span class="pill bad">Suspenso</span>';
+    }
+
+    function applyFilters(){
+      const q = studentQuery.value.trim().toLowerCase();
+      const subj = subjectSel.value;
+      const grp = groupSel.value;
+      const term = termSel.value;
+
+      const rows = DATA.filter(r=>{
+        const matchesQ = !q || r.nombre.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+        const matchesS = !subj || r.asignatura===subj;
+        const matchesG = !grp || r.grupo===grp;
+        const matchesT = !term || r.trimestre===term;
+        return matchesQ && matchesS && matchesG && matchesT;
+      });
+
+      render(rows);
+      renderChips({q,subj,grp,term});
+    }
+
+    function renderChips({q,subj,grp,term}){
+      activeChips.innerHTML = '';
+      const chips = [];
+      if(q) chips.push({label:`Búsqueda: "${q}"`, clear:()=>{studentQuery.value=''}});
+      if(subj) chips.push({label:`Asignatura: ${subj}`, clear:()=>{subjectSel.value=''}});
+      if(grp) chips.push({label:`Grupo: ${grp}`, clear:()=>{groupSel.value=''}});
+      if(term) chips.push({label:`Trimestre: ${term}`, clear:()=>{termSel.value=''}});
+      chips.forEach(c=>{
+        const span=document.createElement('span');
+        span.className='chip';
+        span.innerHTML=`${c.label} &nbsp; <button type="button" class="ghost" style="padding:2px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.14)" aria-label="Quitar filtro">✕</button>`;
+        span.querySelector('button').addEventListener('click',()=>{c.clear();applyFilters()});
+        activeChips.appendChild(span);
+      });
+    }
+
+    function render(rows){
+      resultsBody.innerHTML = '';
+      if(rows.length===0){
+        empty.style.display='block';
+        tableWrap.style.display='none';
+      }else{
+        empty.style.display='none';
+        tableWrap.style.display='block';
+      }
+
+      let pass=0, fail=0, sum=0, count=0;
+      rows.forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.nombre}</td>
+          <td><span class="muted">${r.id}</span></td>
+          <td>${r.grupo}</td>
+          <td>${r.trimestre}</td>
+          <td>${r.asignatura}</td>
+          <td>${r.nota.toFixed(1)}</td>
+          <td>${statusPill(r.nota)}</td>`;
+        resultsBody.appendChild(tr);
+        sum += r.nota; count++;
+        if(r.nota>=5) pass++; else fail++;
+      });
+
+      kpiCount.textContent = count;
+      kpiAvg.textContent = count ? (sum/count).toFixed(2) : '—';
+      kpiPass.textContent = pass;
+      kpiFail.textContent = fail;
+    }
+
+    // Eventos
+    $("#searchForm").addEventListener('submit', (e)=>{e.preventDefault();applyFilters()});
+    $("#resetBtn").addEventListener('click', ()=>{
+      studentQuery.value=''; subjectSel.value=''; groupSel.value=''; termSel.value='';
+      applyFilters();
+    });
+
+    // Mejora UX: búsqueda en vivo con debounce
+    let t=null;
+    studentQuery.addEventListener('input', ()=>{
+      clearTimeout(t);
+      t=setTimeout(applyFilters, 250);
+    });
+
+    // Init
+    populateFilters();
+    applyFilters();
+  </script>
+</body>
+</html>
