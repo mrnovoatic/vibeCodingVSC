@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Últimos 5 partidos del Celta de Vigo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f9fafb;
+      color: #333;
+      margin: 40px;
+    }
+    h1 {
+      color: #0074D9;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 80%;
+      max-width: 800px;
+      background-color: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+    th {
+      background-color: #0074D9;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    button {
+      background-color: #0074D9;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    #mensaje {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Últimos 5 partidos del Celta de Vigo ⚽</h1>
+
+  <table id="tablaCelta">
+    <tr>
+      <th>Fecha</th>
+      <th>Competición</th>
+      <th>Local</th>
+      <th>Visitante</th>
+      <th>Resultado</th>
+    </tr>
+    <tr><td>14-09-2025</td><td>LaLiga</td><td>Celta</td><td>Girona</td><td>1-1</td></tr>
+    <tr><td>31-08-2025</td><td>LaLiga</td><td>Celta</td><td>Villarreal</td><td>1-1</td></tr>
+    <tr><td>27-08-2025</td><td>LaLiga</td><td>Celta</td><td>Real Betis</td><td>1-1</td></tr>
+    <tr><td>23-08-2025</td><td>LaLiga</td><td>Mallorca</td><td>Celta</td><td>1-1</td></tr>
+    <tr><td>17-08-2025</td><td>LaLiga</td><td>Celta</td><td>Getafe</td><td>0-2</td></tr>
+  </table>
+
+  <button onclick="enviarDatos()">📤 Guardar en Google Sheets</button>
+  <p id="mensaje"></p>
+
+  <script>
+    async function enviarDatos() {
+      const mensaje = document.getElementById("mensaje");
+      mensaje.textContent = "⏳ Enviando datos a Google Sheets...";
+      mensaje.style.color = "#555";
+
+      const tabla = document.getElementById("tablaCelta");
+      const filas = tabla.getElementsByTagName("tr");
+      const datos = [];
+
+      for (let i = 1; i < filas.length; i++) {
+        const celdas = filas[i].getElementsByTagName("td");
+        if (celdas.length === 5) {
+          datos.push({
+            fecha: celdas[0].textContent,
+            competicion: celdas[1].textContent,
+            local: celdas[2].textContent,
+            visitante: celdas[3].textContent,
+            resultado: celdas[4].textContent
+          });
+        }
+      }
+
+      try {
+        const url = "https://script.google.com/macros/s/AKfycbyv4-bzyeAKJ1T_NpbE_r-uPOMhyOYU9ZDBF0dTJ83M9GvPhw5680-s6v8D5QLiPYKytQ/exec";
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(datos)
+        });
+
+        const text = await response.text();
+        mensaje.textContent = "✅ " + text;
+        mensaje.style.color = "green";
+      } catch (error) {
+        mensaje.textContent = "❌ Error al enviar los datos: " + error;
+        mensaje.style.color = "red";
+      }
+    }
+  </script>
+</body>
+</html>
