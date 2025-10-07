@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Últimos 5 partidos del Celta de Vigo ⚽</title>
+  <style>
+    :root {
+      --azul-celta: #0074D9;
+      --azul-oscuro: #005fa3;
+      --verde: #1ec94c;
+      --rojo: #e74c3c;
+      --gris-claro: #f9fafb;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: var(--gris-claro);
+      color: #333;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1 {
+      background: linear-gradient(90deg, var(--azul-celta), var(--azul-oscuro));
+      color: white;
+      width: 100%;
+      text-align: center;
+      padding: 20px;
+      margin: 0 0 20px 0;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    table {
+      border-collapse: collapse;
+      width: 85%;
+      max-width: 900px;
+      background: white;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background-color: var(--azul-celta);
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    button {
+      background-color: var(--azul-celta);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      margin-top: 25px;
+    }
+    button:hover {
+      background-color: var(--azul-oscuro);
+      transform: scale(1.05);
+    }
+    #mensaje {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 16px;
+      display: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      width: fit-content;
+    }
+    .ok {
+      background-color: var(--verde);
+      color: white;
+    }
+    .error {
+      background-color: var(--rojo);
+      color: white;
+    }
+    .loading {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #fff;
+      border-top: 3px solid var(--azul-oscuro);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Últimos 5 partidos del Celta de Vigo ⚽</h1>
+  <table id="tablaCelta">
+    <tr>
+      <th>Fecha</th>
+      <th>Competición</th>
+      <th>Local</th>
+      <th>Visitante</th>
+      <th>Resultado</th>
+    </tr>
+    <tr><td>14-09-2025</td><td>LaLiga</td><td>Celta</td><td>Girona</td><td>1-1</td></tr>
+    <tr><td>31-08-2025</td><td>LaLiga</td><td>Celta</td><td>Villarreal</td><td>1-1</td></tr>
+    <tr><td>27-08-2025</td><td>LaLiga</td><td>Celta</td><td>Real Betis</td><td>1-1</td></tr>
+    <tr><td>23-08-2025</td><td>LaLiga</td><td>Mallorca</td><td>Celta</td><td>1-1</td></tr>
+    <tr><td>17-08-2025</td><td>LaLiga</td><td>Celta</td><td>Getafe</td><td>0-2</td></tr>
+  </table>
+  <button onclick="enviarDatos()">📤 Guardar en Google Sheets</button>
+  <div id="mensaje"></div>
+  <script>
+    async function enviarDatos() {
+      const mensaje = document.getElementById("mensaje");
+      mensaje.style.display = "block";
+      mensaje.className = "";
+      mensaje.innerHTML = '<span class="loading"></span> Enviando datos...';
+      mensaje.style.backgroundColor = "#0074D9";
+      mensaje.style.color = "white";
+
+      const tabla = document.getElementById("tablaCelta");
+      const filas = tabla.getElementsByTagName("tr");
+      const partidos = [];
+      for (let i = 1; i < filas.length; i++) {
+        const celdas = filas[i].getElementsByTagName("td");
+        if (celdas.length === 5) {
+          partidos.push({
+            fecha: celdas[0].textContent,
+            competicion: celdas[1].textContent,
+            local: celdas[2].textContent,
+            visitante: celdas[3].textContent,
+            resultado: celdas[4].textContent
+          });
+        }
+      }
+
+      const datos = {
+        token: "CELTA123TOKEN",
+        partidos: partidos
+      };
+
+      try {
+        const url = "https://script.google.com/macros/s/AKfycbwUq7EJFn8ot9PUGSKmRrYNc1QWREj3DYdN_7q84MnZp6z9rHoMEC4hM8p5pRo1mwXMHQ/exec";
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(datos)
+        });
+
+        const text = await response.text();
+        if (response.ok && text.includes("✅")) {
+          mensaje.className = "ok";
+          mensaje.innerHTML = "✅ " + text;
+        } else {
+          mensaje.className = "error";
+          mensaje.innerHTML = "⚠️ Error inesperado: " + text;
+        }
+      } catch (error) {
+        mensaje.className = "error";
+        mensaje.innerHTML = "❌ Error al enviar: " + error.message;
+      }
+    }
+  </script>
+</body>
+</html>
