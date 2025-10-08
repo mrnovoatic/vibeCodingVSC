@@ -1,0 +1,19 @@
+<!DOCTYPE html> <html lang="es"> 
+<head> <meta charset="UTF-8" /> 
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+ <title>Encuesta</title> 
+ </head> 
+ <body> 
+ <h1>Encuesta</h1> 
+ <form id="encuestaForm"> 
+ <label for="nombre">Nombre:</label><br /> 
+ <input type="text" id="nombre" name="nombre" required /><br /><br />
+ <label for="email">Email:</label><br /> <input type="email" id="email" name="email" required /><br /><br />
+ <label for="opinion">¿Qué opinas de nuestro sitio?</label><br /> <textarea id="opinion" name="opinion" required></textarea><br /><br /> 
+ <button type="submit">Enviar</button> </form> <p id="resultado"></p> 
+ <script> const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzv5jo7j_c_UTiSFCTI4wVvjSGPzhWL13u8DuCRFVKfZ-Ww9Ua678k2O0imoXF38y8kIw/exec'; 
+ // Cambia esta línea por tu URL const form = document.getElementById('encuestaForm'); 
+ const resultado = document.getElementById('resultado'); form.addEventListener('submit', e => { e.preventDefault(); const data = { nombre: form.nombre.value, email: form.email.value, opinion: form.opinion.value, }; 
+ fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' }, }) .then(res => res.json()) .then(response => { 
+ if(response.result === 'success'){ resultado.textContent = '¡Gracias por completar la encuesta!'; form.reset(); }
+ else { resultado.textContent = 'Error al enviar, intenta nuevamente.'; } }) .catch(() => { resultado.textContent = 'Error de conexión.'; }); }); </script> </body> </html>
