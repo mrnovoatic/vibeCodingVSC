@@ -104,9 +104,8 @@
           headers: { "Content-Type": "application/json; charset=utf-8" },
           body: JSON.stringify(datos)
         });
-
-
-        const text = await response.text();
+        
+        const text = await response.json();
         mensaje.textContent = "✅ " + text;
         mensaje.style.color = "green";
       } catch (error) {
