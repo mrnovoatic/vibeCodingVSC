@@ -101,7 +101,7 @@
         const url = "https://script.google.com/macros/s/AKfycbzJxnPzwf7ql927x_0QtLelcpdHm3OzezTyAe8kGD-TDNHsrfsnpz8o_RNxhECzuQVVsA/exec";
         const response = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type': "text/plain;charset=utf-8" },
+          headers: { "Content-Type": "application/json; charset=utf-8" },
           body: JSON.stringify(datos)
         });
 
