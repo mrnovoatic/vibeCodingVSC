@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Últimos 5 partidos del Celta</title>
+  <style>
+    table { border-collapse: collapse; margin-bottom: 10px; }
+    th, td { border: 1px solid #333; padding: 5px; text-align: center; }
+    td[contenteditable="true"] { background-color: #f9f9f9; }
+    button { margin-right: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Últimos 5 partidos del Celta de Vigo</h1>
+
+  <table id="tabla-partidos">
+    <thead>
+      <tr>
+        <th>Fecha (YYYY-MM-DD)</th>
+        <th>Local</th>
+        <th>Visitante</th>
+        <th>Goles Local</th>
+        <th>Goles Visitante</th>
+        <th>Eliminar</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button onclick="agregarFila()">Agregar fila</button>
+  <button onclick="guardarDatos()">Guardar en Google Sheets</button>
+
+  <script>
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbx.../exec"; // tu Web App
+
+    // Cargar datos desde Apps Script
+    async function cargarDatos() {
+      try {
+        const res = await fetch(webAppUrl, {method:"GET"});
+        const partidos = await res.json();
+        const tbody = document.querySelector("#tabla-partidos tbody");
+        tbody.innerHTML = "";
+        partidos.forEach(crearFila);
+      } catch(e) {
+        alert("Error al cargar datos: " + e);
+      }
+    }
+
+    function crearFila(p) {
+      const tbody = document.querySelector("#tabla-partidos tbody");
+      const tr = document.createElement("tr");
+      ["fecha","local","visitante","goles_local","goles_visitante"].forEach(prop=>{
+        const td = document.createElement("td");
+        td.contentEditable = "true";
+        td.textContent = p[prop] || "";
+        tr.appendChild(td);
+      });
+      const tdEliminar = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.textContent = "❌";
+      btn.onclick = () => tr.remove();
+      tdEliminar.appendChild(btn);
+      tr.appendChild(tdEliminar);
+      tbody.appendChild(tr);
+    }
+
+    function agregarFila() {
+      crearFila({fecha:"", local:"", visitante:"", goles_local:"", goles_visitante:""});
+    }
+
+    async function guardarDatos() {
+      const filas = document.querySelectorAll("#tabla-partidos tbody tr");
+      const partidos = [];
+      filas.forEach(tr=>{
+        const c = tr.querySelectorAll("td");
+        partidos.push({
+          fecha: c[0].textContent.trim(),
+          local: c[1].textContent.trim(),
+          visitante: c[2].textContent.trim(),
+          goles_local: parseInt(c[3].textContent.trim())||0,
+          goles_visitante: parseInt(c[4].textContent.trim())||0
+        });
+      });
+
+      // Validación básica
+      for(let i=0;i<partidos.length;i++){
+        const p = partidos[i];
+        if(!p.fecha || isNaN(Date.parse(p.fecha))) { alert(`Fila ${i+1}: Fecha inválida`); return; }
+        if(p.goles_local<0 || p.goles_visitante<0){ alert(`Fila ${i+1}: Goles inválidos`); return; }
+      }
+
+      try {
+        const res = await fetch(webAppUrl,{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({partidos})
+        });
+        const data = await res.json();
+        alert("Datos guardados ✅");
+        cargarDatos();
+      } catch(e){
+        alert("Error al guardar datos: "+e);
+      }
+    }
+
+    window.onload = cargarDatos;
+  </script>
+</body>
+</html>
